@@ -102,7 +102,7 @@ void parse_args(const int argc, char *const argv[]) {
 
     if (arg == sequential_string) method = SEQUENTIAL;
         else print_helper();
-
+    
     errno = 0;
 
     int c;

@@ -7,6 +7,7 @@ using namespace std;
 
 
 vector<vector<float>> matrix __attribute__((aligned(64)));
+vector<vector<float>> array __attribute__((aligned(64)));
 vector<float> terms __attribute__((aligned(64)));
 
 
@@ -33,30 +34,22 @@ int main(const int argc, char *const argv[]) {
     srand((int) seed);
 
     vector<float> solution;
-
-    if (to_csv) {
-        if (!ifstream(filename)) {
-            outfile.open(filename);
-            outfile << algorithm << ',' << matrix_size << ',' << nworkers << ',' << init_time_s << ','
-                    << computation_time_s
-                    << ',' << iterations_computed << ',' << error_s << std::endl;
-        } else outfile.open(filename, ios::app);
-    }
-
     generate_diagonal_dominant_matrix(size, matrix, -range, range);
     generate_vector(size, terms, -range, range);
-
     cout << matrix_size << ' ' << size << endl;
-    cout << nworkers << ' ' << workers << endl;
     cout << algorithm << ' ';
 
     switch (method) {
         case SEQUENTIAL:
             cout << sequential_string << endl;
-            if (to_csv)
-                outfile << sequential_string << ',' << size << ',' << 1 << ',';
-            solution = serial_jacobi(matrix, terms, iterations, tolerance, outfile);
+            solution = serial_jacobi(matrix, terms, iterations, tolerance);
             break;
+        case OPENMP:
+            cout << openmp_string << endl;
+            solution = openmp_jacobi(matrix, terms, iterations, tolerance);
+        case PTHREADS:
+            cout << pthreads_string << endl;
+            solution = pthread_jacobi(matrix, terms, iterations, tolerance, workers);
     }
 
     if (debug) {
@@ -66,29 +59,16 @@ int main(const int argc, char *const argv[]) {
         cout << "error: " << error << endl;
     }
 
-    outfile.flush();
-    outfile.close();
-    delete (filename);
     return 0;
 }
 
 
 void print_helper() {
-    cout << "Usage: " << "main " << "<algorithm> " << "[-w <workers>] " << "[-s <size>]  << [-p <filename>]"
-         << "[-i <iterations>] " << "[-t <tolerance> " << "[-h] " <<"[-d] " << "[-c <seed>] >>" << endl << endl;
+    cout << "Usage: " << "main " << "<algorithm> " << endl << endl;
     cout << "The required arguments are:" << endl;
     cout << '\t' << "algorithm " << "indicates the algorithm executed taken from the following list" << endl;
     cout << "\t\t" << sequential_string << ": sequential jacobi algorithm" << endl;
-    cout << "The optional arguments are:" << endl;
-    cout << '\t' << "[-w]" << '\t' << "number of threads used, default 8" << endl;
-    cout << '\t' << "[-s]" << '\t' << "size of the matrix, default 1024" << endl;
-    cout << '\t' << "[-p]" << '\t' << "filename in case of csv exporting, default null" << endl;
-    cout << '\t' << "[-i]" << '\t' << "iteration performed, default 50" << endl;
-    cout << '\t' << "[-t]" << '\t' << "error tolerated, default -1" << endl;
-    cout << '\t' << "[-d]" << '\t' << "enable debug prints, solution and error" << endl;
-    cout << '\t' << "[-h]" << '\t' << "prints the helper" << endl;
-    cout << '\t' << "[-c]" << '\t' << "seed used to generate the matrix, default 42" << endl;
-    flush(cout);
+    cout << "\t\t" << openmp_string << ": openmp jacobi algorithm" << endl;
     if (flag) exit(0);
     exit(EINVAL);
 }
@@ -101,43 +81,10 @@ void parse_args(const int argc, char *const argv[]) {
     string arg = std::string(argv[1]);
 
     if (arg == sequential_string) method = SEQUENTIAL;
-        else print_helper();
+        else if (arg == openmp_string) method == OPENMP;
+            else print_helper();
     
     errno = 0;
-
-    int c;
-    while ((c = getopt(argc, argv, "w:s:i:t:p:c:dh")) != -1) {
-        switch (c) {
-            case 'w':
-                workers = static_cast<ulong> (strtol(optarg, nullptr, 10));
-                break;
-            case 's':
-                size = static_cast<ulong> (strtol(optarg, nullptr, 10));
-                break;
-            case 'i':
-                iterations = static_cast<ulong> (strtol(optarg, nullptr, 10)) - 1;
-                break;
-            case 't':
-                tolerance = stof(optarg);
-                break;
-            case 'p':
-                to_csv = true;
-                filename = new char[strlen(optarg)];
-                strcpy(filename, optarg);
-                break;
-            case 'd':
-                debug = true;
-                break;
-            case 'c':
-                seed = static_cast<unsigned int> (strtol(optarg, nullptr, 10));
-                break;
-            case 'h':
-                flag = true;
-                print_helper();
-            default:
-                print_helper();
-        }
-    }
     if (errno) {
         print_helper();
     }

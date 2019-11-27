@@ -27,6 +27,8 @@ const auto init_time_s = "initialization time";
 
 
 static const auto sequential_string = "sequential";
+static const auto openmp_string = "openmp";
+static const auto pthreads_string = "pthread"
 static const auto matrix_size = "matrix_size";
 static const auto algorithm = "algorithm";
 static const auto nworkers = "workers";
@@ -35,11 +37,12 @@ static const auto nworkers = "workers";
 static const float range = 10000.f;
 
 enum METHODS {
-    SEQUENTIAL
+    SEQUENTIAL,
+    OPENMP
+    PTHREADS
 };
 
 static auto method = SEQUENTIAL;
-
 /**
  * utility function implementing the jacobi method in order to find one solution
  * @param row coeffiient row
@@ -97,6 +100,25 @@ void generate_diagonal_dominant_matrix(const ulong size, std::vector<std::vector
     }
 
 }
+
+template<typename T>
+void generate_diagonal_dominant(const ulong size, std::vector<T> &array,
+                                       const T min, const T max) {
+    for (ulong i = 0; i < size; ++i) {
+        std::vector<T> tmp;
+        generate_vector(size, tmp, min, max);
+        array.insert(array.end(), tmp.begin(), tmp.end());
+    }
+    for (ulong i = 0; i < size; ++i) {
+        T sum = T(0);
+        for (size_t j = 0; j < size; ++j) 
+            sum += abs(array[i * size + j]);
+        sum -= abs(array[i* size + i]);
+        array[i * size + i] = abs(array[i * size + i]) + sum;
+    }
+
+}
+
 
 
 template<typename T>

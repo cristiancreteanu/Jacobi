@@ -38,7 +38,10 @@ int main(const int argc, char *const argv[]) {
     generate_vector(size, terms, -range, range);
     cout << matrix_size << ' ' << size << endl;
     cout << algorithm << ' ';
-
+    std::string aux(argv[1]);
+    if (aux == openmp_string) {
+        method = OPENMP;
+    }
     switch (method) {
         case SEQUENTIAL:
             cout << sequential_string << endl;
@@ -47,9 +50,10 @@ int main(const int argc, char *const argv[]) {
         case OPENMP:
             cout << openmp_string << endl;
             solution = openmp_jacobi(matrix, terms, iterations, tolerance);
+            break;
         case PTHREADS:
             cout << pthreads_string << endl;
-            solution = pthread_jacobi(matrix, terms, iterations, tolerance, workers);
+            solution = pthreads_jacobi(matrix, terms, iterations, tolerance, workers);
     }
 
     if (debug) {

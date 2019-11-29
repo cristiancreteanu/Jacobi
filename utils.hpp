@@ -28,7 +28,7 @@ const auto init_time_s = "initialization time";
 
 static const auto sequential_string = "sequential";
 static const auto openmp_string = "openmp";
-static const auto pthreads_string = "pthread"
+static const auto pthreads_string = "pthread";
 static const auto matrix_size = "matrix_size";
 static const auto algorithm = "algorithm";
 static const auto nworkers = "workers";
@@ -38,7 +38,7 @@ static const float range = 10000.f;
 
 enum METHODS {
     SEQUENTIAL,
-    OPENMP
+    OPENMP,
     PTHREADS
 };
 

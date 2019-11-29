@@ -68,8 +68,7 @@ std::vector<T> openmp_jacobi(const std::vector<std::vector<T>> coefficients, con
 
     start_time = Time::now();
     //allocate solution vectors
-    std::vector<T> old_solutions __attribute__((aligned(64)));
-    std::vector<T> solutions __attribute__((aligned(64)));
+    std::vector<T> solutions[2] __attribute__((aligned(64)));
 
     T zero = tolerance - tolerance;
     T error;
@@ -77,8 +76,8 @@ std::vector<T> openmp_jacobi(const std::vector<std::vector<T>> coefficients, con
     //initialize solution vectors
     #pragma omp parallel for
     for (int i = 0; i < coefficients.size(); ++i) {
-        old_solutions.emplace_back(zero);
-        solutions.emplace_back(zero);
+        solutions[0].emplace_back(zero);
+        solutions[1].emplace_back(zero);
     }
 
 
@@ -89,27 +88,27 @@ std::vector<T> openmp_jacobi(const std::vector<std::vector<T>> coefficients, con
         error = zero;
         //calculate solutions
         #pragma omp parallel for
-        for (ulong i = 0; i < solutions.size(); ++i) {
-            solutions[i] = solution_find(coefficients[i], old_solutions, terms[i], i);
+        for (ulong i = 0; i < solutions[0].size(); ++i) {
+            solutions[(iteration + 1)%2][i] = solution_find(coefficients[i], solutions[iteration%2], terms[i], i);
         }
 
         //compute the error
         #pragma omp parallel for
-        for (ulong i = 0; i < solutions.size(); ++i)
-            error += std::abs(solutions[i] - old_solutions[i]);
+        for (ulong i = 0; i < solutions[0].size(); ++i)
+            error += std::abs(solutions[(iteration + 1)%2][i] - solutions[iteration%2][i]);
 
         // check the error
-        error /= solutions.size();
+        error /= solutions[0].size();
         if (error <= tolerance) break;
-        swap(solutions, old_solutions);
     }
 
 
     total_time = Time::now();
     print_metrics(iteration, error);
 
-    return solutions;
+    return solutions[iteration%2];
 }
+/*
 template<typename T>
 struct jacobi_data {
     std::vector<std::vector<T>> &coeff;
@@ -129,8 +128,9 @@ struct jacobi_data {
         this->solutions = solutions;
         this->old_solutions = old_solutions;
     }
-};
+};*/
 
+/*
 template<typename T> thread_calc(void* data) {
     jacobi_data* x = (jacobi_data *) data;
     ulong iteration;
@@ -156,11 +156,12 @@ template<typename T> thread_calc(void* data) {
     }
 
 }
+*/
 
 template<typename T>
 std::vector<T> pthreads_jacobi(const std::vector<std::vector<T>> coefficients, const std::vector<T> terms,
                              const ulong iterations, const T tolerance, int numthread) {
-
+/*
     start_time = Time::now();
     //allocate solution vectors
     std::vector<T> old_solutions __attribute__((aligned(64)));
@@ -174,20 +175,18 @@ std::vector<T> pthreads_jacobi(const std::vector<std::vector<T>> coefficients, c
         old_solutions.emplace_back(zero);
         solutions.emplace_back(zero);
     }
-
-    vector<pthread_t>threads(numthread);
-
     init_time = Time::now();
     for (int i = 0; i < numthread; ++i) {
-        struct jacobi_data data(&coefficients, &terms, iterations, tolerance, i, &solutions, &old_solutions);
+        struct jacobi_data data(coefficients, terms, iterations, tolerance, i, solutions, old_solutions);
         pthread_create(&threads[i], NULL, ,(void *) data)
     }
 
-
     total_time = Time::now();
-    print_metrics(iteration, error);
 
     return solutions;
+    */
+    std::vector<T>sol;
+    return sol;
 }
 
 

@@ -14,7 +14,7 @@ vector<float> terms __attribute__((aligned(64)));
 void parse_args(int argc, char *const argv[]);
 
 ulong size = 1024;
-ulong workers = 8;
+ulong workers = 4;
 ulong iterations = 50;
 float tolerance = 0;
 
@@ -73,6 +73,7 @@ void print_helper() {
     cout << '\t' << "algorithm " << "indicates the algorithm executed taken from the following list" << endl;
     cout << "\t\t" << sequential_string << ": sequential jacobi algorithm" << endl;
     cout << "\t\t" << openmp_string << ": openmp jacobi algorithm" << endl;
+    cout <<"\t\t" << pthreads_string << ": openmp jacobi algorithm" << endl;
     if (flag) exit(0);
     exit(EINVAL);
 }
@@ -85,7 +86,8 @@ void parse_args(const int argc, char *const argv[]) {
     string arg = std::string(argv[1]);
 
     if (arg == sequential_string) method = SEQUENTIAL;
-        else if (arg == openmp_string) method == OPENMP;
+        else if (arg == openmp_string) method = OPENMP;
+            else if (arg == pthreads_string) method = PTHREADS;
             else print_helper();
     
     errno = 0;

@@ -45,7 +45,6 @@ std::vector<T> serial_jacobi(const std::vector<std::vector<T>> coefficients, con
         //calculate solutions
         for (ulong i = 0; i < solutions.size(); ++i) {
             solutions[i] = solution_find(coefficients[i], old_solutions, terms[i], i);
-
         }
         //compute the error
         for (ulong i = 0; i < solutions.size(); ++i)
@@ -108,65 +107,72 @@ std::vector<T> openmp_jacobi(const std::vector<std::vector<T>> coefficients, con
 
     return solutions[iteration%2];
 }
-/*
-template<typename T>
+
 struct jacobi_data {
-    std::vector<std::vector<T>> &coeff;
-    std::vector<T> &terms;
-    std::vector<T>&solutions;
-    std::vector<T>&old_solutions;
     ulong iterations;
     ulong tolerance;
+    int nrThreads;
     int id;
-    jacobi_data(std::vector<std::vector<T>> &coeff, std::vector<T> &terms, ulong iterations
-                    ulong tolerance, int id, std::vector<T>&solutions, std::vector<T>&old_solutions) {
-        this->coeff = coeff;
-        this->terms = terms;
+    jacobi_data( const ulong iterations, const int n, const ulong tolerance, const int id) {
         this->iterations = iterations;
         this->tolerance = tolerance;
         this->id = id;
-        this->solutions = solutions;
-        this->old_solutions = old_solutions;
+        this->nrThreads = n;
     }
-};*/
+    jacobi_data() {
+        this->iterations = 0;
+        this->tolerance = 0;
+        this->id = -1;
+        this->nrThreads = 4;
+    }
+};
 
-/*
-template<typename T> thread_calc(void* data) {
-    jacobi_data* x = (jacobi_data *) data;
+std::vector<float> old_solutions ;
+std::vector<float> solutions ;
+std::vector<std::vector<float>> coeff;
+std::vector<float> term;
+
+pthread_barrier_t myBarrier;
+
+void* thread_calc(void* data) {
+    jacobi_data* x = (jacobi_data*) data;
     ulong iteration;
+    float error;
+    int nr = solutions.size() / x->nrThreads;
+    int start = x->id * nr;
+    int stop = (x->id + 1) * nr - 1;
+    if (x->id == x->nrThreads)
+        stop = solutions.size();
+        cout << x->id << "\n";
     for (iteration = 0; iteration < x->iterations; ++iteration) {
-        error = zero;
+        error = 0.0;
         //calculate solutions
-        int start = TO DO 
-        int stop = TO DO
         for (ulong i = start; i < stop; ++i) {
-            x->solutions[i] = solution_find(x->coeff[i], x->old_solutions, x->terms[i], i);
+           solutions[i] = solution_find(coeff[i], old_solutions, term[i], i);
         }
+       
         //compute the error
-        for (ulong i = start; i < stop; ++i)
-            error += std::abs(x->solutions[i] - x->old_solutions[i]);
-
+        for (ulong i = start; i < stop; ++i) {
+            error += std::abs(solutions[i] - old_solutions[i]);
+        }
         // check the error
-        error /= (stop - start + 1);
-        if (error <= tolerance) break;
-
-        for (ulong i = start; i < stop; ++i)
+     
+        for (ulong i = start; i < stop; ++i) {
             swap(solutions[i], old_solutions[i]);
-        //put barrier here
+        }
+       pthread_barrier_wait(&myBarrier);
     }
-
+    return NULL;
 }
-*/
+
 
 template<typename T>
 std::vector<T> pthreads_jacobi(const std::vector<std::vector<T>> coefficients, const std::vector<T> terms,
-                             const ulong iterations, const T tolerance, int numthread) {
-/*
+                             const ulong iterations, const T tolerance, const int numthread) {
+
     start_time = Time::now();
     //allocate solution vectors
-    std::vector<T> old_solutions __attribute__((aligned(64)));
-    std::vector<T> solutions __attribute__((aligned(64)));
-
+    std::vector<pthread_t>fread(numthread);
     T zero = tolerance - tolerance;
     T error;
 
@@ -176,17 +182,22 @@ std::vector<T> pthreads_jacobi(const std::vector<std::vector<T>> coefficients, c
         solutions.emplace_back(zero);
     }
     init_time = Time::now();
+    coeff = coefficients;
+    term = terms;
+    std::vector<jacobi_data>data(numthread);
+    pthread_barrier_init(&myBarrier, NULL, numthread);
+
     for (int i = 0; i < numthread; ++i) {
-        struct jacobi_data data(coefficients, terms, iterations, tolerance, i, solutions, old_solutions);
-        pthread_create(&threads[i], NULL, ,(void *) data)
+        jacobi_data aux(iterations, numthread, tolerance, i);    
+        data[i] = aux;
+        pthread_create(&fread[i], NULL, thread_calc,(void*) &data[i]);
     }
-
+    for(int i = 0 ; i < numthread; ++i) {
+        int t = pthread_join(fread[i], NULL);
+    }
     total_time = Time::now();
-
+    pthread_barrier_destroy(&myBarrier);
     return solutions;
-    */
-    std::vector<T>sol;
-    return sol;
 }
 
 

@@ -1,5 +1,0 @@
-algorithm,matrix_size,workers,initialization time,computation time,iterations computed,delta
-sequential,64,1,1.0851e-05,0.00590224,50,2.81943e-11
-sequential,512,1,4.6911e-05,0.249918,50,3.61755e-12
-sequential,1024,1,8.3563e-05,0.952559,50,4.41869e-14
-sequential,2048,1,0.000157305,3.59685,50,8.89076e-13

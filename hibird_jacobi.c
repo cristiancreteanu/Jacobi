@@ -102,6 +102,7 @@ int main(int argc, char **argv) {
         stop = (n / nrproc) * (id + 1);
         if (id == nrproc)
             stop = n;
+        #pragma omp parallel for
         for (i = start; i < stop; ++i) {
             for (j = 0; j < n; ++j) {
                 terms[i] -= (solutions[osol_it][j] * recv[i * n + j]);
@@ -110,7 +111,7 @@ int main(int argc, char **argv) {
         }
         //printf("Gather\n");
         float *p = solutions[sol_it] + start;
-        if (nrproc > 1) { 
+        if (nrproc > 1) {
             MPI_Gatherv(p, (stop - start + 1), MPI_FLOAT, solutions[sol_it], 
                 sendcounts, displs, MPI_FLOAT, 0, MPI_COMM_WORLD);
             printf("Broadcast\n");

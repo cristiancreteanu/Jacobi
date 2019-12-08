@@ -13,7 +13,7 @@ vector<float> terms __attribute__((aligned(64)));
 
 void parse_args(int argc, char *const argv[]);
 
-ulong size = 1024;
+ulong size = 4096;
 ulong workers = 4;
 ulong iterations = 50;
 float tolerance = 0;

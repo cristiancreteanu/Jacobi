@@ -89,13 +89,8 @@ std::vector<T> openmp_jacobi(const std::vector<std::vector<T>> coefficients, con
         #pragma omp parallel for
         for (ulong i = 0; i < solutions[0].size(); ++i) {
             solutions[(iteration + 1)%2][i] = solution_find(coefficients[i], solutions[iteration%2], terms[i], i);
-        }
-
-        //compute the error
-        #pragma omp parallel for
-        for (ulong i = 0; i < solutions[0].size(); ++i)
             error += std::abs(solutions[(iteration + 1)%2][i] - solutions[iteration%2][i]);
-
+        }
         // check the error
         error /= solutions[0].size();
         if (error <= tolerance) break;
@@ -196,6 +191,7 @@ std::vector<T> pthreads_jacobi(const std::vector<std::vector<T>> coefficients, c
         int t = pthread_join(fread[i], NULL);
     }
     total_time = Time::now();
+    print_metrics(5, error);
     pthread_barrier_destroy(&myBarrier);
     return solutions;
 }

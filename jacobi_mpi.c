@@ -79,15 +79,6 @@ int main(int argc, char **argv) {
     float zero = tolerance - tolerance;
     float error;
 
-    if (id == 0) {
-        sum = 0;
-        for (i = 0; i < nrproc; ++i) {
-            sendcounts[i] = (n / nrproc);
-            displs[i] = sum;
-            sum += sendcounts[i];
-        }
-        sendcounts[nrproc - 1] += (n % nrproc);
-    }
     printf("Start algo\n");
     stime = MPI_Wtime();
     //Starting iterations
@@ -104,20 +95,20 @@ int main(int argc, char **argv) {
             stop = n;
         for (i = start; i < stop; ++i) {
             float term = terms[i];
+            int idx = i - start;
             for (j = 0; j < n; ++j) {
-                term -= (solutions[osol_it][j] * recv[i * n + j]);
+                term -= (solutions[osol_it][j] * recv[idx * n + j]);
             }
-            solutions[sol_it][i] =  (term + (solutions[osol_it][i] * recv[i * n + i])) / recv[i * n + j];
+            solutions[sol_it][i] =  (term + (solutions[osol_it][i] * recv[idx * n + i])) / recv[idx * n + j];
         }
-        //printf("Gather\n");
+        printf("Gather\n");
         float *p = solutions[sol_it] + start;
-        if (nrproc > 1) { 
-            MPI_Gatherv(p, (stop - start + 1), MPI_FLOAT, solutions[sol_it], 
+        
+        MPI_Gatherv(p, (stop - start + 1), MPI_FLOAT, solutions[sol_it], 
                 sendcounts, displs, MPI_FLOAT, 0, MPI_COMM_WORLD);
-            printf("Broadcast\n");
-            MPI_Bcast(solutions[sol_it], n, MPI_FLOAT, 0, MPI_COMM_WORLD);
-            printf("Barrier");
-        }
+        printf("Broadcast\n");
+        MPI_Bcast(solutions[sol_it], n, MPI_FLOAT, 0, MPI_COMM_WORLD);
+        printf("Barrier");
         MPI_Barrier(MPI_COMM_WORLD);
     }
     etime = MPI_Wtime();

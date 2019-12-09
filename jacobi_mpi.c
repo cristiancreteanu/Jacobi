@@ -80,12 +80,12 @@ int main(int argc, char **argv) {
     printf("\nScatterv done\n");
     float* solutions;
     float* old_solutions;
-    solutions = (float*) calloc(nrecv, sizeof(float));
-    old_solutions = (float*) calloc(nrecv, sizeof(float));
+    solutions = (float*) calloc(n, sizeof(float));
+    old_solutions = (float*) calloc(n, sizeof(float));
 
     float zero = tolerance - tolerance;
     float error;
-
+    sum = 0;
     for (i = 0; i < nrproc; ++i) {
       sendcounts[i] = (n / nrproc);
       displs[i] = sum;
@@ -116,16 +116,23 @@ int main(int argc, char **argv) {
         }
         printf("\nGather\n");
         float *p = solutions + start;
-        
-        MPI_Gatherv(p, (stop - start + 1), MPI_FLOAT, old_solutions, 
-                sendcounts, displs, MPI_FLOAT, 0, MPI_COMM_WORLD);
+        /*MPI_Gatherv(p, (stop - start + 1), MPI_FLOAT, old_solutions, 
+          sendcounts, displs, MPI_FLOAT, 0, MPI_COMM_WORLD);*/
+        if (id != 0) {
+            MPI_Send(p, (stop - start + 1), MPI_FLOAT, 0, 0, MPI_COMM_WORLD);
+        } else {
+          for (i = 1; i < nrproc; ++i) {
+            start = (n / nrproc) * i;
+            MPI_Recv(old_solutions + start, n/nrporc, MPI_FLOAT, i, 0, MPI_COMM_WORLD);
+          }
+        }
         printf("Broadcast\n");
-        /* Check if Gatherv works
+        
         if (id == 0) {
           for (int i = 0; i < n; ++i)
             printf("%f ",old_solutions[i]);
         }
-        */
+        
         MPI_Bcast(old_solutions, n, MPI_FLOAT, 0, MPI_COMM_WORLD);
         printf("Barrier");
         MPI_Barrier(MPI_COMM_WORLD);

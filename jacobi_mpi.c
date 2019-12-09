@@ -123,7 +123,7 @@ int main(int argc, char **argv) {
         } else {
           for (i = 1; i < nrproc; ++i) {
             start = (n / nrproc) * i;
-            MPI_Recv(old_solutions + start, n/nrporc, MPI_FLOAT, i, 0, MPI_COMM_WORLD);
+            MPI_Recv(old_solutions + start, n/nrproc, MPI_FLOAT, i, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
           }
         }
         printf("Broadcast\n");

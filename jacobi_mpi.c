@@ -2,7 +2,7 @@
 #include <mpi.h>
 #include <stdlib.h>
 #include <time.h>
-#define SIZE 1024
+#define SIZE 4096
 
 int iterations = 50;
 int tolerance = 0;
@@ -55,29 +55,21 @@ int main(int argc, char **argv) {
         sum += sendcounts[i];
     }
     sendcounts[nrproc - 1] += (n % nrproc) * n;
-    printf("Init done\n");
     // send specific data to processes
+    stime = MPI_Wtime();
     MPI_Bcast(&n, 1, MPI_INT, 0, MPI_COMM_WORLD);
     MPI_Bcast(&iterations, 1, MPI_INT, 0, MPI_COMM_WORLD);
     MPI_Bcast(&tolerance, 1, MPI_INT, 0, MPI_COMM_WORLD);
     MPI_Bcast(terms, n, MPI_FLOAT, 0, MPI_COMM_WORLD);
 
-    printf("Bcast done\n");
     float* recv = (float *) calloc(sendcounts[id], sizeof(float));
     nrecv = (n / nrproc);
     if (id == nrproc - 1)
       nrecv += (n % nrproc);
 
-    printf("Scatterv\n");
     MPI_Scatterv(coeff, sendcounts, displs, MPI_FLOAT, 
                 recv, nrecv * n, MPI_FLOAT, 0, MPI_COMM_WORLD);
-    /*
-    Verific daca am primit ce trebuie (numere reale intre 0 si 1)
-    for (i = 0; i < nrecv * n; ++i)
-       printf("%f ",recv[i]);
-    Merge
-    */
-    printf("\nScatterv done\n");
+    
     float* solutions;
     float* old_solutions;
     solutions = (float*) calloc(n, sizeof(float));
@@ -93,8 +85,6 @@ int main(int argc, char **argv) {
     }
     sendcounts[nrproc - 1] += (n % nrproc);
 
-    printf("Start algo\n");
-    stime = MPI_Wtime();
     
     //Starting iterations
     int iteration;
@@ -114,32 +104,25 @@ int main(int argc, char **argv) {
             }
             solutions[i] =  (term + (old_solutions[i] * recv[idx * n + i])) / recv[idx * n + i];
         }
-        printf("\nGather\n");
+
         float *p = solutions + start;
-        /*MPI_Gatherv(p, (stop - start + 1), MPI_FLOAT, old_solutions, 
-          sendcounts, displs, MPI_FLOAT, 0, MPI_COMM_WORLD);*/
         if (id != 0) {
-            MPI_Send(p, (stop - start + 1), MPI_FLOAT, 0, 0, MPI_COMM_WORLD);
+            MPI_Send(p, stop - start, MPI_FLOAT, 0, 1, MPI_COMM_WORLD);
         } else {
-          for (i = 1; i < nrproc; ++i) {
-            start = (n / nrproc) * i;
-            MPI_Recv(old_solutions + start, n/nrproc, MPI_FLOAT, i, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-          }
+            for (i = 1; i < nrproc; ++i) {
+                start = (n / nrproc) * i;
+                MPI_Recv(old_solutions + start, n / nrproc, MPI_FLOAT, i, MPI_ANY_TAG, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+                printf("%d\n", id);
+            }
         }
-        printf("Broadcast\n");
-        
-        if (id == 0) {
-          for (int i = 0; i < n; ++i)
-            printf("%f ",old_solutions[i]);
-        }
+        printf("%d\n", id);
         
         MPI_Bcast(old_solutions, n, MPI_FLOAT, 0, MPI_COMM_WORLD);
-        printf("Barrier");
         MPI_Barrier(MPI_COMM_WORLD);
     }
     etime = MPI_Wtime();
-    //Gather solutions
-    printf("Total time is: %lf", etime - stime);
+
+    printf("Total time is: %lf\n", etime - stime);
     MPI_Finalize();
     return 0;
 }

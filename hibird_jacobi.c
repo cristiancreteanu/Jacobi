@@ -47,55 +47,48 @@ int main(int argc, char **argv) {
           terms[j] = -10000 + rand() % 20000;
         }
         generate_diagonal_dominant_matrix(n, -10000, 10000);
-        for (i = 0; i < nrproc; ++i) {
-            sendcounts[i] = (n / nrproc) * n ;
-            displs[i] = sum;
-            sum += sendcounts[i];
-        }
-        sendcounts[nrproc - 1] += (n % nrproc) * n;
     }
-    printf("Init done\n");
+    stime = MPI_Wtime();
+    for (i = 0; i < nrproc; ++i) {
+        sendcounts[i] = (n / nrproc) * n ;
+        displs[i] = sum;
+        sum += sendcounts[i];
+    }
+    sendcounts[nrproc - 1] += (n % nrproc) * n;
+   
     // send specific data to processes
     MPI_Bcast(&n, 1, MPI_INT, 0, MPI_COMM_WORLD);
     MPI_Bcast(&iterations, 1, MPI_INT, 0, MPI_COMM_WORLD);
     MPI_Bcast(&tolerance, 1, MPI_INT, 0, MPI_COMM_WORLD);
     MPI_Bcast(terms, n, MPI_FLOAT, 0, MPI_COMM_WORLD);
 
-    printf("Bcast done\n");
     float* recv = (float *) calloc(sendcounts[id], sizeof(float));
     nrecv = (n / nrproc);
     if (id == nrproc - 1)
       nrecv += (n % nrproc);
-
-    printf("Scatterv\n");
+   
     MPI_Scatterv(coeff, sendcounts, displs, MPI_FLOAT, 
                 recv, nrecv * n, MPI_FLOAT, 0, MPI_COMM_WORLD);
-
-    printf("Scatterv done\n");
-    float* solutions[2];
-    solutions[0] = (float*) calloc(nrecv, sizeof(float));
-    solutions[1] = (float*) calloc(nrecv, sizeof(float));
+ 
+    float* solutions;
+    float* old_solutions;
+    solutions = (float*) calloc(n, sizeof(float));
+    old_solutions = (float*) calloc(n, sizeof(float));
 
     float zero = tolerance - tolerance;
     float error;
-
-    if (id == 0) {
-        sum = 0;
-        for (i = 0; i < nrproc; ++i) {
-            sendcounts[i] = (n / nrproc);
-            displs[i] = sum;
-            sum += sendcounts[i];
-        }
-        sendcounts[nrproc - 1] += (n % nrproc);
+    sum = 0;
+    for (i = 0; i < nrproc; ++i) {
+      sendcounts[i] = (n / nrproc);
+      displs[i] = sum;
+      sum += sendcounts[i];
     }
-    printf("Start algo\n");
-    stime = MPI_Wtime();
+    sendcounts[nrproc - 1] += (n % nrproc);
+
     //Starting iterations
     int iteration;
     for (iteration = 0; iteration < iterations; ++iteration) {
         error = zero;
-        int sol_it = iteration % 2;
-        int osol_it = (iteration + 1) % 2;
         //calculate solutions
         int start, stop;
         start = (n / nrproc) * id;
@@ -104,20 +97,29 @@ int main(int argc, char **argv) {
             stop = n;
         #pragma omp parallel for
         for (i = start; i < stop; ++i) {
+            float term = terms[i];
+            int idx = i - start;
+            #pragma simd old_solutions recv
             for (j = 0; j < n; ++j) {
-                terms[i] -= (solutions[osol_it][j] * recv[i * n + j]);
+                term -= (old_solutions[j] * recv[idx * n + j]);
             }
-            solutions[sol_it][i] =  (terms[i] + (solutions[osol_it][i] * recv[i * n + i])) / recv[i * n + j];
+            solutions[i] =  (term + (old_solutions[i] * recv[idx * n + i])) / recv[idx * n + i];
         }
-        //printf("Gather\n");
-        float *p = solutions[sol_it] + start;
-        if (nrproc > 1) {
-            MPI_Gatherv(p, (stop - start + 1), MPI_FLOAT, solutions[sol_it], 
-                sendcounts, displs, MPI_FLOAT, 0, MPI_COMM_WORLD);
-            printf("Broadcast\n");
-            MPI_Bcast(solutions[sol_it], n, MPI_FLOAT, 0, MPI_COMM_WORLD);
-            printf("Barrier");
+        float *p = solutions + start;
+        if (id != 0) {
+            MPI_Send(p, stop - start, MPI_FLOAT, 0, 0, MPI_COMM_WORLD);
+        } else {   
+          for (i = 1; i < nrproc; ++i) {
+            start = (n / nrproc) * i;
+            MPI_Recv(old_solutions + start, n/nrproc, MPI_FLOAT, i, MPI_ANY_TAG, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+          }
         }
+        if (id == 0) {
+          for (int i = 0; i < n; ++i)
+            printf("%f ",old_solutions[i]);
+        }
+        
+        MPI_Bcast(old_solutions, n, MPI_FLOAT, 0, MPI_COMM_WORLD);
         MPI_Barrier(MPI_COMM_WORLD);
     }
     etime = MPI_Wtime();

@@ -73,7 +73,6 @@ std::vector<T> openmp_jacobi(const std::vector<std::vector<T>> coefficients, con
     T error;
 
     //initialize solution vectors
-    #pragma omp parallel for
     for (int i = 0; i < coefficients.size(); ++i) {
         solutions[0].emplace_back(zero);
         solutions[1].emplace_back(zero);

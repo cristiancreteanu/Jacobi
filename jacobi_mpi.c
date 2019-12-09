@@ -103,10 +103,11 @@ int main(int argc, char **argv) {
         if (id == nrproc)
             stop = n;
         for (i = start; i < stop; ++i) {
+            float term = terms[i];
             for (j = 0; j < n; ++j) {
-                terms[i] -= (solutions[osol_it][j] * recv[i * n + j]);
+                term -= (solutions[osol_it][j] * recv[i * n + j]);
             }
-            solutions[sol_it][i] =  (terms[i] + (solutions[osol_it][i] * recv[i * n + i])) / recv[i * n + j];
+            solutions[sol_it][i] =  (term + (solutions[osol_it][i] * recv[i * n + i])) / recv[i * n + j];
         }
         //printf("Gather\n");
         float *p = solutions[sol_it] + start;

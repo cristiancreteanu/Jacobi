@@ -47,13 +47,14 @@ int main(int argc, char **argv) {
           terms[j] = -10000 + rand() % 20000;
         }
         generate_diagonal_dominant_matrix(n, -10000, 10000);
-        for (i = 0; i < nrproc; ++i) {
-            sendcounts[i] = (n / nrproc) * n ;
-            displs[i] = sum;
-            sum += sendcounts[i];
-        }
-        sendcounts[nrproc - 1] += (n % nrproc) * n;
     }
+
+    for (i = 0; i < nrproc; ++i) {
+        sendcounts[i] = (n / nrproc) * n ;
+        displs[i] = sum;
+        sum += sendcounts[i];
+    }
+    sendcounts[nrproc - 1] += (n % nrproc) * n;
     printf("Init done\n");
     // send specific data to processes
     MPI_Bcast(&n, 1, MPI_INT, 0, MPI_COMM_WORLD);
@@ -70,23 +71,35 @@ int main(int argc, char **argv) {
     printf("Scatterv\n");
     MPI_Scatterv(coeff, sendcounts, displs, MPI_FLOAT, 
                 recv, nrecv * n, MPI_FLOAT, 0, MPI_COMM_WORLD);
-
-    printf("Scatterv done\n");
-    float* solutions[2];
-    solutions[0] = (float*) calloc(nrecv, sizeof(float));
-    solutions[1] = (float*) calloc(nrecv, sizeof(float));
+    /*
+    Verific daca am primit ce trebuie (numere reale intre 0 si 1)
+    for (i = 0; i < nrecv * n; ++i)
+       printf("%f ",recv[i]);
+    Merge
+    */
+    printf("\nScatterv done\n");
+    float* solutions;
+    float* old_solutions;
+    solutions = (float*) calloc(nrecv, sizeof(float));
+    old_solutions = (float*) calloc(nrecv, sizeof(float));
 
     float zero = tolerance - tolerance;
     float error;
 
+    for (i = 0; i < nrproc; ++i) {
+      sendcounts[i] = (n / nrproc);
+      displs[i] = sum;
+      sum += sendcounts[i];
+    }
+    sendcounts[nrproc - 1] += (n % nrproc);
+
     printf("Start algo\n");
     stime = MPI_Wtime();
+    
     //Starting iterations
     int iteration;
     for (iteration = 0; iteration < iterations; ++iteration) {
         error = zero;
-        int sol_it = iteration % 2;
-        int osol_it = (iteration + 1) % 2;
         //calculate solutions
         int start, stop;
         start = (n / nrproc) * id;
@@ -97,17 +110,23 @@ int main(int argc, char **argv) {
             float term = terms[i];
             int idx = i - start;
             for (j = 0; j < n; ++j) {
-                term -= (solutions[osol_it][j] * recv[idx * n + j]);
+                term -= (old_solutions[j] * recv[idx * n + j]);
             }
-            solutions[sol_it][i] =  (term + (solutions[osol_it][i] * recv[idx * n + i])) / recv[idx * n + j];
+            solutions[i] =  (term + (old_solutions[i] * recv[idx * n + i])) / recv[idx * n + i];
         }
-        printf("Gather\n");
-        float *p = solutions[sol_it] + start;
+        printf("\nGather\n");
+        float *p = solutions + start;
         
-        MPI_Gatherv(p, (stop - start + 1), MPI_FLOAT, solutions[sol_it], 
+        MPI_Gatherv(p, (stop - start + 1), MPI_FLOAT, old_solutions, 
                 sendcounts, displs, MPI_FLOAT, 0, MPI_COMM_WORLD);
         printf("Broadcast\n");
-        MPI_Bcast(solutions[sol_it], n, MPI_FLOAT, 0, MPI_COMM_WORLD);
+        /* Check if Gatherv works
+        if (id == 0) {
+          for (int i = 0; i < n; ++i)
+            printf("%f ",old_solutions[i]);
+        }
+        */
+        MPI_Bcast(old_solutions, n, MPI_FLOAT, 0, MPI_COMM_WORLD);
         printf("Barrier");
         MPI_Barrier(MPI_COMM_WORLD);
     }

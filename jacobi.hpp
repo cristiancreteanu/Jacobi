@@ -138,7 +138,6 @@ void* thread_calc(void* data) {
     int stop = (x->id + 1) * nr - 1;
     if (x->id == x->nrThreads)
         stop = solutions.size();
-        cout << x->id << "\n";
     for (iteration = 0; iteration < x->iterations; ++iteration) {
         error = 0.0;
         //calculate solutions

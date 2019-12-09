@@ -39,21 +39,21 @@ int main(int argc, char **argv) {
     sendcounts = (int *) malloc(nrproc * sizeof(int));
     displs = (int *) malloc(nrproc * sizeof(int));
     terms = (float*) malloc(n * sizeof(float));
-    if (id == 0) {
-        // Scatter data
-        // Each process takes an equal number of columns
-        coeff = (float*) malloc(n * n * sizeof(float));
-        for (j = 0; j < n; ++j) {
-          terms[j] = -10000 + rand() % 20000;
-        }
-        generate_diagonal_dominant_matrix(n, -10000, 10000);
-        for (i = 0; i < nrproc; ++i) {
-            sendcounts[i] = (n / nrproc) * n ;
-            displs[i] = sum;
-            sum += sendcounts[i];
-        }
-        sendcounts[nrproc - 1] += (n % nrproc) * n;
+    
+    // Scatter data
+    // Each process takes an equal number of columns
+    coeff = (float*) malloc(n * n * sizeof(float));
+    for (j = 0; j < n; ++j) {
+      terms[j] = -10000 + rand() % 20000;
     }
+    generate_diagonal_dominant_matrix(n, -10000, 10000);
+    for (i = 0; i < nrproc; ++i) {
+        sendcounts[i] = (n / nrproc) * n ;
+        displs[i] = sum;
+        sum += sendcounts[i];
+    }
+    sendcounts[nrproc - 1] += (n % nrproc) * n;
+    
     printf("Init done\n");
     // send specific data to processes
     MPI_Bcast(&n, 1, MPI_INT, 0, MPI_COMM_WORLD);

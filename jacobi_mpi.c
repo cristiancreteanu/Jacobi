@@ -2,7 +2,7 @@
 #include <mpi.h>
 #include <stdlib.h>
 #include <time.h>
-#define SIZE 1024
+#define SIZE 4096
 
 int iterations = 50;
 int tolerance = 0;
@@ -55,8 +55,8 @@ int main(int argc, char **argv) {
         sum += sendcounts[i];
     }
     sendcounts[nrproc - 1] += (n % nrproc) * n;
-   
     // send specific data to processes
+    stime = MPI_Wtime();
     MPI_Bcast(&n, 1, MPI_INT, 0, MPI_COMM_WORLD);
     MPI_Bcast(&iterations, 1, MPI_INT, 0, MPI_COMM_WORLD);
     MPI_Bcast(&tolerance, 1, MPI_INT, 0, MPI_COMM_WORLD);
@@ -66,10 +66,10 @@ int main(int argc, char **argv) {
     nrecv = (n / nrproc);
     if (id == nrproc - 1)
       nrecv += (n % nrproc);
-   
+
     MPI_Scatterv(coeff, sendcounts, displs, MPI_FLOAT, 
                 recv, nrecv * n, MPI_FLOAT, 0, MPI_COMM_WORLD);
- 
+    
     float* solutions;
     float* old_solutions;
     solutions = (float*) calloc(n, sizeof(float));
@@ -85,6 +85,7 @@ int main(int argc, char **argv) {
     }
     sendcounts[nrproc - 1] += (n % nrproc);
 
+    
     //Starting iterations
     int iteration;
     for (iteration = 0; iteration < iterations; ++iteration) {
@@ -103,26 +104,25 @@ int main(int argc, char **argv) {
             }
             solutions[i] =  (term + (old_solutions[i] * recv[idx * n + i])) / recv[idx * n + i];
         }
+
         float *p = solutions + start;
         if (id != 0) {
-            MPI_Send(p, stop - start, MPI_FLOAT, 0, 0, MPI_COMM_WORLD);
-        } else {   
-          for (i = 1; i < nrproc; ++i) {
-            start = (n / nrproc) * i;
-            MPI_Recv(old_solutions + start, n/nrproc, MPI_FLOAT, i, MPI_ANY_TAG, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-          }
+            MPI_Send(p, stop - start, MPI_FLOAT, 0, 1, MPI_COMM_WORLD);
+        } else {
+            for (i = 1; i < nrproc; ++i) {
+                start = (n / nrproc) * i;
+                MPI_Recv(old_solutions + start, n / nrproc, MPI_FLOAT, i, MPI_ANY_TAG, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+                printf("%d\n", id);
+            }
         }
-        if (id == 0) {
-          for (int i = 0; i < n; ++i)
-            printf("%f ",old_solutions[i]);
-        }
+        printf("%d\n", id);
         
         MPI_Bcast(old_solutions, n, MPI_FLOAT, 0, MPI_COMM_WORLD);
         MPI_Barrier(MPI_COMM_WORLD);
     }
     etime = MPI_Wtime();
-    //Gather solutions
-    printf("Total time is: %lf", etime - stime);
+
+    printf("Total time is: %lf\n", etime - stime);
     MPI_Finalize();
     return 0;
 }

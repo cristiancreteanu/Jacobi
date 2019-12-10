@@ -2,7 +2,7 @@
 #include <mpi.h>
 #include <stdlib.h>
 #include <time.h>
-#define SIZE 4096
+#define SIZE 16384
 
 int iterations = 50;
 int tolerance = 0;
